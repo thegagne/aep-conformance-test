@@ -1,16 +1,14 @@
 # AEP Conformance Test
 
-A behavioral conformance suite for [AEP.dev](https://aep.dev) APIs. Point it at a running server and it checks — against the **live API, not just the spec on paper** — whether the service actually behaves the way the AEPs require: correct status codes, resource lifecycles, pagination, strong consistency, field semantics, error shapes, and more.
+A behavioral conformance suite for [AEP.dev](https://aep.dev) APIs. Point it at a running server and it checks whether the service actually behaves the way the AEPs require: correct status codes, resource lifecycles, pagination, strong consistency, field semantics, error shapes, and more.
 
-It reads your API's own OpenAPI document, figures out the resources and which features they implement, then drives real requests and grades what comes back. **85 checks across ~30 AEPs**, each tagged **MUST / SHOULD / MAY**:
+It reads your API's own OpenAPI document, figures out the resources and which features they implement, then drives real requests and builds a report of conformance with the AEP spec.
+
+It includes **85 checks across ~30 AEPs**, each tagged **MUST / SHOULD / MAY**:
 
 - a failed **MUST** breaks conformance and exits non-zero — so it drops straight into CI;
 - a failed **SHOULD** is a warning (promote to failure with `--strict`);
 - optional features you don't implement are reported **not applicable**, never held against you.
-
-No configuration and no hand-written test cases — the spec is the test plan. REST/OpenAPI today, Protobuf later. Written in Go.
-
-> Still `v0.x`: the set of checks changes between versions, so pin a version if you gate CI on the result. See [Versioning](#versioning).
 
 ## How it works
 
@@ -82,7 +80,7 @@ Structural checks read the spec; behavioral checks exercise the live server. Any
 
 The full requirement-by-requirement coverage map — including what's deliberately out of scope (proto-only IDL rules, auth/permission behavior) — lives in [AEP-REQUIREMENTS-CHECKLIST.md](AEP-REQUIREMENTS-CHECKLIST.md).
 
-## Versioning
+## Conformance Test Versioning
 
 This is still a work in progress, but once we hit 1.0 we may present stored conformance tests for server implementations in the repo. For now, see the [examples](examples/).
 
