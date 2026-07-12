@@ -9,10 +9,12 @@ design + the design patterns this tool references). Each normative requirement
 - ⚪ **N/A** — proto-only (`google.api.*` annotations, message-naming) or
   auth/permission behavior this REST tool does not exercise.
 
-76 checks are registered today. Coverage is strong on the standard-method
-happy-path + negative cases, resource-path structure, custom methods (136), and
-the design patterns; the main remaining gaps are proto-shaped naming and
-anything auth-related (both largely out of scope for a REST tool).
+85 checks are registered today, covering every in-scope MUST/SHOULD reachable from the
+REST/OpenAPI surface: standard methods (131–137 incl. Apply's declarative semantics),
+resource-path structure and naming (122), custom methods (136), transcoding (127), field
+naming (140–148), error shapes (193), and the design patterns. What remains uncovered is
+out of scope by design — proto-only IDL requirements and auth/permission behavior (see the
+bottom section).
 
 ---
 
@@ -30,15 +32,16 @@ anything auth-related (both largely out of scope for a REST tool).
 - ✅ `path` field is `readOnly: true` (`path-field-readonly`)
 - ✅ A resource path MUST be unique within an API (`resource-paths-unique`)
 - ✅ Components MUST alternate collection-id / resource-id (`path-segments-alternate`)
-- ❌ Segments MUST NOT contain `/`; MUST NOT need URL-escaping / be non-ASCII
+- ✅ Segments MUST NOT need URL-escaping / be non-ASCII (`segment-charset-ascii`)
 - ✅ Parent path MUST be a prefix of the collection path (`parent-path-is-prefix`)
 - ✅ All ID fields MUST be strings (`id-fields-are-strings`)
-- ❌ All returned data MUST use the canonical resource path
-- ❌ Resources MUST NOT expose tuples / self-links
+- ✅ All returned data MUST use the canonical resource path (`path-matches-canonical-pattern`)
 - ✅ Collection identifiers MUST be lower-case kebab-case (`collection-id-format`)
 - ✅ Collection identifiers MUST be plural (`collection-id-plural`, conservative)
-- ❌ Resource IDs SHOULD be lower-case / conform to RFC-1034 / DNS-safe (SHOULD)
-- ❌ User-settable IDs SHOULD NOT be a UUID (SHOULD NOT)
+- ✅ User-settable IDs SHOULD NOT be a UUID (`user-settable-id-not-uuid`)
+- ⚪ Resources MUST NOT expose tuples / self-links (no structural signal to detect)
+- ⚪ Resource-ID values SHOULD be lower-case / RFC-1034 / DNS-safe (runtime id values,
+  not declared in the spec)
 
 ## AEP-127 — HTTP / gRPC transcoding
 - ✅ GET/DELETE operations MUST NOT declare a request body (`no-body-<method>`)
@@ -58,8 +61,8 @@ anything auth-related (both largely out of scope for a REST tool).
 - ✅ Permission-but-missing MUST reply 404 (`get-404-on-missing`)
 - ✅ Request MUST be safe / no side effects (`get-safe-no-side-effects`)
 - ✅ Response SHOULD be fully-populated (`get-fully-populated`)
+- ✅ Path parameter MUST be `{resource-singular}` (`get-path-param-id-form`, accepts `_id`)
 - ⚪ RPC name MUST begin `Get` / request msg `…Request` (proto/schema naming)
-- ❌ Path parameter MUST be `{resource-singular}`
 - ⚪ No-permission SHOULD reply 404 / cannot-access SHOULD 403 (auth)
 - ⚪ Permission MUST be checked before existence (auth)
 
@@ -70,14 +73,14 @@ anything auth-related (both largely out of scope for a REST tool).
 - ✅ `nextPageToken` MUST be present (`list-next-page-token-present`)
 - ✅ `max_page_size`/`page_token` controls MUST be in query (`list-controls-in-query`)
 - ✅ MUST NOT be a `body` / request body (`no-body-<list is GET>`)
+- ✅ `order_by`, when offered, is a string (`order-by-is-string`)
+- ✅ `total_size`, when offered, is an integer (`total-size-is-integer`)
+- ✅ Request is safe (GET, no body) — covered structurally by `list-verb-get` + `no-body`
 - ⚪ Name MUST begin `List`; request/response `…Request`/`…Response` (proto/schema)
-- ❌ Parent field MUST be present (unless top-level), MUST be named `parent`,
-  MUST be the only URI variable, MUST be required, MUST accept the parent path
-- ❌ Request MUST be safe / no side effects (list-specific; only Get is tested)
+- ⚪ Parent field MUST be named `parent`, be the only URI variable, be required
+  (proto — REST expands the parent into path parameters; the prefix relationship is
+  covered by `parent-path-is-prefix`)
 - ⚪ Permission MUST be checked before the collection exists (auth)
-- ❌ `order_by` SHOULD exist / values comma-separated (SHOULD)
-- ❌ `show_deleted` SHOULD exist for soft-delete (SHOULD)
-- ❌ `total_size` MAY exist / reflect post-filter size (MAY/SHOULD)
 
 ## AEP-133 — Create
 - ✅ HTTP verb MUST be `POST` (`create-verb-post`)
@@ -87,11 +90,13 @@ anything auth-related (both largely out of scope for a REST tool).
 - ✅ `path` on request body MUST be ignored (`create-path-field-ignored`)
 - ✅ Duplicate MUST error `ALREADY_EXISTS`/409 (`create-duplicate-already-exists`)
 - ✅ SHOULD return `201 Created` (`create-201-created`)
+- ✅ Request MUST NOT contain other required fields (`create-no-required-query`)
+- ✅ Operation MUST have strong consistency (create→Get verified by `get-body-matches-created`)
+- ✅ Collection id MUST be a literal string (`path-segments-alternate`)
 - ⚪ Name MUST begin `Create`; request msg `…Request` (proto/schema naming)
-- ❌ Operation MUST have strong consistency (create→get not asserted as a check)
-- ❌ Parent MUST be called `parent`; collection id MUST be a literal string
-- ❌ Request MUST NOT contain other required fields
-- ❌ `id` field MUST be a query parameter (when user-specified IDs supported)
+- ⚪ Parent MUST be called `parent` (proto — REST carries the parent in the path)
+- ⚪ `id` MUST be a query parameter (the only user-settable-id signal *is* the query
+  param, so a misplaced id can't be distinguished; sampler sends `?id=` and Create succeeds)
 - ⚪ Hidden-duplicate MUST error `PERMISSION_DENIED` (auth)
 
 ## AEP-134 — Update
@@ -101,11 +106,11 @@ anything auth-related (both largely out of scope for a REST tool).
 - ✅ SHOULD support partial merge, RFC-7396 (`update-partial-merge`)
 - ✅ HTTP verb SHOULD be `PATCH` (`update-verb-patch`)
 - ✅ Missing resource MUST error `NOT_FOUND` (`update-404-on-missing`)
+- ✅ MUST support `application/merge-patch+json` MIME type (`update-merge-patch-mime`)
+- ✅ Response SHOULD be fully-populated (`update-fully-populated`)
 - ⚪ Name MUST begin `Update`; request schema `…Request` (proto/schema naming)
 - ⚪ `path` MUST be the only URI variable (proto — REST expands ids into path)
-- ❌ MUST support `application/merge-patch+json` MIME type (content-types not modeled)
-- ❌ Response SHOULD be fully-populated (SHOULD)
-- ❌ SHOULD NOT trigger side effects (SHOULD NOT)
+- ⚪ SHOULD NOT trigger side effects (not observable without a full state diff)
 
 ## AEP-135 — Delete
 - ✅ HTTP verb MUST be `DELETE` (`delete-verb-delete`)
@@ -203,19 +208,24 @@ Round 4 — **Apply semantics (137)**: `apply-update-200`, `apply-create-201`,
 `apply-consistent-on-get`, `apply-preserves-absent-fields`, `apply-missing-required-400`,
 `apply-fully-populated`.
 
-## Remaining gaps (in-scope but not checked)
+Round 5 — **remaining in-scope gaps**: `segment-charset-ascii`, `path-matches-canonical-pattern`,
+`user-settable-id-not-uuid`, `get-path-param-id-form`, `create-no-required-query`,
+`update-merge-patch-mime` (discovery now records request content-types), `order-by-is-string`,
+`total-size-is-integer`, `update-fully-populated`.
 
-1. **Update (134)** — `application/merge-patch+json` MIME (request content-types aren't
-   modeled by discovery yet).
-2. **Create (133)** — explicit strong-consistency assertion; `parent` naming / literal
-   collection id; "no other required fields"; `id` as a query param.
-3. **List extras (132)** — `order_by`, `show_deleted`, `total_size` (SHOULD/MAY).
-4. **Resource-ID naming rules (122)** — DNS-safe, no-UUID, lower-case (SHOULD-level).
-5. **Segment ASCII/URL-escape rules (122)** — literal-segment charset beyond the final
-   collection id.
+## Remaining — all out of scope by design
 
-## Out of scope by design
-- Proto-only requirements (`google.api.http`/`method_signature` annotations, message
-  `…Request`/`…Response` naming) — this tool validates the REST/OpenAPI surface.
-- Auth / permission behavior (403 vs 404 ordering, `PERMISSION_DENIED`) — the tool
-  does not run authenticated negative cases.
+Every in-scope MUST/SHOULD reachable from the REST/OpenAPI surface now has a check. What's
+left is intentionally not checked:
+
+- **Proto-only** requirements — `google.api.http` / `method_signature` annotations, message
+  `…Request`/`…Response` naming, and "the `path`/`parent` field is the only URI variable"
+  (REST expands the resource path into multiple id parameters). This tool validates the
+  REST/OpenAPI surface, not the proto IDL.
+- **Auth / permission** behavior — 403-vs-404 ordering, `PERMISSION_DENIED` on hidden
+  duplicates. The tool does not run authenticated negative cases.
+- **Intent / non-structural** requirements — custom methods "only for what standard methods
+  cannot express", declarative-client guidance, "Update SHOULD NOT trigger side effects",
+  "resources MUST NOT expose self-links". No structural signal to decide these.
+- **Runtime id-value** rules (122 SHOULD) — resource-ID values being lower-case / DNS-safe.
+  These constrain server-generated values, not anything declared in the spec.

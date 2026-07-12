@@ -119,6 +119,9 @@ type Endpoint struct {
 
 	RequestBodySchema   *Schema
 	RequestBodyRequired bool
+	// RequestContentTypes lists the media types declared for the request body
+	// (e.g. application/json, application/merge-patch+json), in document order.
+	RequestContentTypes []string
 
 	// Responses maps HTTP status code (as written in the spec) to the response.
 	Responses map[string]*Response

@@ -122,7 +122,15 @@ func buildEndpoint(m *APIModel, path, verb string, op *Operation) *Endpoint {
 	}
 	if op.RequestBody != nil {
 		ep.RequestBodyRequired = op.RequestBody.Required
+		for ct := range op.RequestBody.Content {
+			ep.RequestContentTypes = append(ep.RequestContentTypes, ct)
+		}
+		sort.Strings(ep.RequestContentTypes)
+		// Resolve the body schema from JSON or, failing that, merge-patch+json
+		// (Update bodies are commonly declared only as application/merge-patch+json).
 		if mt, ok := op.RequestBody.Content["application/json"]; ok {
+			ep.RequestBodySchema = m.resolve(mt.Schema)
+		} else if mt, ok := op.RequestBody.Content["application/merge-patch+json"]; ok {
 			ep.RequestBodySchema = m.resolve(mt.Schema)
 		}
 	}
