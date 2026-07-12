@@ -1,20 +1,28 @@
-# golangci-lint configuration. Runs as an advisory CI job for now (see
-# .github/workflows/ci.yml). A conservative, low-false-positive set; promote the
-# lint job to blocking once the catalog stabilizes and any findings are cleared.
+# golangci-lint configuration (v2). Runs as a blocking CI job — see
+# .github/workflows/ci.yml. A conservative, low-false-positive set tuned to this
+# codebase's idioms.
 version: "2"
 
 linters:
+  # Default set is errcheck, govet, ineffassign, staticcheck, unused. Add a
+  # couple of high-signal extras. (misspell is intentionally omitted: it flags
+  # the RFC-2119 identifier SHOULDNOT.)
   enable:
-    - govet
-    - ineffassign
-    - staticcheck
-    - unused
-    - misspell
     - unconvert
   settings:
+    errcheck:
+      # Writing to an in-memory/stdout writer and closing a read body are
+      # deliberately unchecked throughout the renderers and clients.
+      exclude-functions:
+        - fmt.Fprintf
+        - fmt.Fprint
+        - fmt.Fprintln
+        - (*os.File).Close
+        - (io.ReadCloser).Close
+        - (io.Closer).Close
     staticcheck:
-      # Style/quickfix nits that are noise for this codebase's idioms.
       checks:
         - all
+        - -QF1001 # "could apply De Morgan's law" — the negated form reads clearer here
         - -QF1002 # "could use tagged switch"
-        - -ST1000 # package comment style
+        - -ST1000 # package-comment style

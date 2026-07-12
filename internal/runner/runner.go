@@ -349,7 +349,7 @@ func (rn *Runner) teardown() {
 		return
 	}
 	for i := len(rn.created) - 1; i >= 0; i-- {
-		rn.Client.Do("DELETE", rn.created[i], nil)
+		_, _, _ = rn.Client.Do("DELETE", rn.created[i], nil) // best-effort cleanup
 	}
 	rn.created = nil
 }

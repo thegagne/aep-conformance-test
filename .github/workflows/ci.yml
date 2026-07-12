@@ -38,12 +38,10 @@ jobs:
       - name: test (race)
         run: go test -race ./...
 
-  # Advisory: surfaces lint suggestions as annotations but does not gate merges
-  # yet (the catalog is still growing; promote to blocking after a cleanup pass).
+  # Blocking: the tree is lint-clean under .golangci.yml, so keep it that way.
   lint:
-    name: golangci-lint (advisory)
+    name: golangci-lint
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -52,4 +50,4 @@ jobs:
           cache: true
       - uses: golangci/golangci-lint-action@v6
         with:
-          version: latest
+          version: v2.12.2
