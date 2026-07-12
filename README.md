@@ -10,7 +10,7 @@ It reads your API's own OpenAPI document, figures out the resources and which fe
 
 No configuration and no hand-written test cases — the spec is the test plan. REST/OpenAPI today, Protobuf later. Written in Go.
 
-> **Pre-1.0.** The check catalog is still growing and verdicts can tighten between releases — see [Versioning](#versioning).
+> Still `v0.x`: the set of checks changes between versions, so pin a version if you gate CI on the result. See [Versioning](#versioning).
 
 ## How it works
 
