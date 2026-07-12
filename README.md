@@ -1,23 +1,35 @@
 # AEP Conformance Test
 
-This tool runs a series of conformance tests against a live running API to validate its conformance with [AEP.dev](https://aep.dev) specifications.
+A behavioral conformance suite for [AEP.dev](https://aep.dev) APIs. Point it at a running server and it checks — against the **live API, not just the spec on paper** — whether the service actually behaves the way the AEPs require: correct status codes, resource lifecycles, pagination, strong consistency, field semantics, error shapes, and more.
 
-It outputs a report (JSON, markdown, or stdout) detailing conformance with different parts of the specification.
+It reads your API's own OpenAPI document, figures out the resources and which features they implement, then drives real requests and grades what comes back. **85 checks across ~30 AEPs**, each tagged **MUST / SHOULD / MAY**:
 
-Some areas are required and will be marked as non-conformant if violated; other areas may be not applicable — for example, if the API does not implement an optional feature, that is acceptable, but it will still be noted.
+- a failed **MUST** breaks conformance and exits non-zero — so it drops straight into CI;
+- a failed **SHOULD** is a warning (promote to failure with `--strict`);
+- optional features you don't implement are reported **not applicable**, never held against you.
 
-It can be used to test REST implementations (Protobuf is a future addition). Written in Go.
+No configuration and no hand-written test cases — the spec is the test plan. REST/OpenAPI today, Protobuf later. Written in Go.
+
+> **Pre-1.0.** The check catalog is still growing and verdicts can tighten between releases — see [Versioning](#versioning).
 
 ## How it works
 
-1. **Discover** — the tool loads the API's AEP-annotated OpenAPI 3.1 document (fetched from `<base-url>/openapi.json` or supplied as a file) and parses the `x-aep-resource` annotations into a resource hierarchy, per-method endpoints, and a set of detected optional features (pagination, filtering, etags, soft-delete, …).
-2. **Exercise** — for each resource, it runs the full lifecycle against the live server: create any parent chain, then `Create → Get → List → Update → Apply`, pagination, negative cases (missing → 404, duplicate → 409), and `Delete → Get (404)`. Everything created is torn down afterward.
-3. **Report** — every check is classified by its requirement level. A failed **MUST** breaks conformance (non-zero exit); a failed **SHOULD** is a warning; **MAY** and absent optional features are noted as *not applicable*.
+Three phases, driven entirely by your API's OpenAPI document:
 
-## Install / build
+1. **Discover** — loads the AEP-annotated OpenAPI 3.1 doc (from `<base-url>/openapi.json` or a file) and resolves the `x-aep-resource` annotations into a resource hierarchy, the standard and custom methods on each, and which optional features each opts into (pagination, filtering, etags, soft-delete, …).
+2. **Exercise** — for every resource it runs a real lifecycle against the live server: build any parent chain, then `Create → Get → List → Update → Apply`, page through collections, probe the `-` wildcard read, and hit the negatives (missing → 404, duplicate → 409, bad input → 400). Consistency is verified through follow-up reads, every request/response is captured as evidence, and **everything it creates is torn down afterward**.
+3. **Report** — each check is graded by requirement level and rendered to stdout, JSON, or markdown. Reports are stamped with the tool version, AEP spec revision, target, and timestamp, so a saved verdict is reproducible.
+
+Static (spec-only) checks still run when you pass just a spec file; dynamic checks are skipped without a live server.
+
+## Install
 
 ```bash
+# build a local binary
 go build -o aep-conformance .
+
+# or install from source (installs a binary named `aep-conformance-test`)
+go install github.com/thegagne/aep-conformance-test@latest
 ```
 
 ## Usage
@@ -45,53 +57,38 @@ aep-conformance discover http://localhost:5268
 | `--output <fmt>` | `stdout` (default), `json`, or `markdown` |
 | `--output-file <path>` | write the report to a file instead of stdout |
 | `--resource <name>` | limit the run to named resources (repeatable) |
+| `-H, --header <hdr>` | extra request header, `Key: Value` or `Key=Value` (repeatable); applied to the spec fetch and every request |
 | `--strict` | treat SHOULD failures as failures (non-zero exit) |
 | `--verbose` | show passing checks and full request/response evidence |
 | `--timeout <dur>` | per-request timeout (default `30s`) |
 
-The process exits non-zero when any required (MUST) check fails, or any SHOULD check fails under `--strict`.
+Use `-H` to test an authenticated API — the header goes on both the OpenAPI fetch and every live request:
+
+```bash
+aep-conformance test https://api.example.com -H "Authorization: Bearer $TOKEN"
+aep-conformance test https://api.example.com -H "X-Api-Key=$KEY"
+```
+
+The process exits non-zero when any required (MUST) check fails, or any SHOULD check fails under `--strict`. Report checks are ordered by AEP number, failures first within each AEP.
 
 ## What it checks
 
-Checks are grouped by AEP and gated on applicability — a check for an optional feature reports *not applicable* when the feature is absent from the spec.
+Structural checks read the spec; behavioral checks exercise the live server. Anything targeting an optional feature reports *not applicable* when your API doesn't implement it.
 
-- **Structure & naming** — OpenAPI 3.1 (101), API name (102), HTTP verb mapping (127), method/operationId naming (130), resource paths & the `path` field (122), resource types (4), field naming and conventions (140–145), standard fields (148), state enums (216).
-- **Standard methods** — Get (131), List (132), Create (133), Update (134), Delete (135), Custom methods (136), Apply (137): status codes, response shapes, echoed input, path immutability, partial-merge semantics, strong-consistency, and the negative cases (404 / 409 / 400).
-- **Design patterns (conditional)** — Pagination (158, incl. an infinite-loop guard), Filtering (160), Read masks (157), Field masks (161), Reading across collections (159), Unreachable (217), ETags/preconditions (154), Idempotency (155), Revisions (162), Soft delete (164), Expiration (214).
-- **Errors** — RFC 9457 Problem Details shape and status/type/content-type (193).
+- **Structure & naming** — OpenAPI 3.1 (101), API name (102), resource types (4); resource paths (122): the `path` field, parent-prefix hierarchy, collection/id segment alternation, path uniqueness, canonical returned paths, collection-id and id naming; HTTP verb mapping & transcoding (127); operationId naming (130); field naming & conventions (140–142); standard output-only fields (148).
+- **Standard methods** — Get (131), List (132), Create (133), Update (134), Delete (135), Custom methods (136), Apply (137): status codes, response shapes, echoed input, path immutability, partial-merge (`PATCH`) and field-preservation (`Apply`) semantics, `merge-patch+json` support, strong consistency verified via follow-up reads, create-vs-update (201/200), and the negatives (404 / 409 / 400).
+- **Design patterns (conditional)** — Pagination incl. an infinite-loop guard (158), Filtering (160), Reading across collections via the `-` wildcard (159), Read masks (157), field masks / `update_mask` (134), ETags & preconditions (154), Idempotency (155), Revisions (162), Soft delete (164), Expiration (214), Resource states (216), Unreachable / partial-failure (217).
+- **Errors** — RFC 9457 Problem Details: `type`, `status`, content-type, and overall shape (193).
 
-## Architecture
+The full requirement-by-requirement coverage map — including what's deliberately out of scope (proto-only IDL rules, auth/permission behavior) — lives in [AEP-REQUIREMENTS-CHECKLIST.md](AEP-REQUIREMENTS-CHECKLIST.md).
 
-```
-cmd/                 cobra CLI (test, discover, version)
-internal/discovery/  OpenAPI 3.1 -> APIModel (resources, endpoints, feature flags)
-internal/client/     REST client that captures requests/responses as evidence
-internal/sampler/    builds valid request bodies from JSON Schema
-internal/checks/     data-driven check registry (static + dynamic)
-internal/runner/     per-resource lifecycle orchestration + teardown
-internal/report/     stdout / json / markdown renderers
-```
+## Versioning
 
-Checks are small registered values (metadata + a closure). Static checks read the discovered model; dynamic checks read a *probe* of captured live interactions, so the network I/O happens once per resource and the assertions are pure.
-
-## Versioning & the check catalog
-
-A conformance verdict is only meaningful relative to two things: the tool version and the AEP spec revision its checks encode. Both are printed by `aep-conformance version` (or `--version`) and **stamped into every report** (`tool_version`, `aep_spec_revision`, `generated_at`, `target`), so a saved report is self-describing and reproducible.
-
-This project follows [SemVer](https://semver.org/) but is intentionally **pre-1.0 (`v0.x`)** while the catalog is still growing:
-
-- **The check catalog is part of the public contract.** Adding or tightening a check can turn a previously-CONFORMANT API into NON-CONFORMANT — a breaking change for anyone gating CI on the exit code, even though nothing on their side changed.
-- **New/stricter checks land as MINOR bumps.** Pin a version (`go install ...@v0.3.0`) to pin the catalog; verdicts may tighten between minor releases. Read the release notes before bumping.
-- **`AEPSpecRevision`** (in `internal/buildinfo`) tracks the spec snapshot the catalog targets; it moves with the catalog.
-- **`v1.0.0` is a deliberate promise** that the catalog and report schema are stable — not made yet.
+Pre-1.0, on purpose. The check catalog is part of the public contract: adding or tightening a check can flip a previously-conformant API to non-conformant, so **new checks ship as minor bumps and verdicts can tighten between releases** — pin a version to pin the catalog. Every report and `aep-conformance version` record the tool version and the AEP spec revision the checks target, so results stay reproducible. `v1.0.0` will mark the catalog and report schema as stable; not there yet.
 
 ## References
 
-- https://aep.dev/llms.txt
-- https://aep.dev
-- https://github.com/aep-dev/aepcli
-- https://github.com/aep-dev/aepc
-- https://github.com/aep-dev/api-linter
-- https://github.com/aep-dev/aep-openapi-linter
-- https://github.com/rambleraptor/aepbase
-- https://github.com/thegagne/dotnet-aep-server
+- https://aep.dev — the specifications ([llms.txt](https://aep.dev/llms.txt) index)
+- https://github.com/aep-dev/aepc — AEP compiler
+- https://github.com/aep-dev/api-linter · [aep-openapi-linter](https://github.com/aep-dev/aep-openapi-linter) — static linters
+- https://github.com/thegagne/dotnet-aep-server — a server this suite is tested against
