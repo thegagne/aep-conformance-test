@@ -1,10 +1,10 @@
 # AEP Conformance Report
 
 **API:** aepbase  
-**Target:** http://localhost:8099  
+**Target:** http://localhost:8080  
 **Tool:** aep-conformance dev  
 **Spec:** aep.dev catalog @ 2026-07-11  
-**Generated:** 2026-07-12T02:34:29Z  
+**Generated:** 2026-07-12T02:36:12Z  
 
 ❌ **NON-CONFORMANT** — 11 required check(s) failed
 
