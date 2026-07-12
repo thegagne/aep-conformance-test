@@ -1,0 +1,8 @@
+# Compiled binary
+/aep-conformance
+
+# Generated conformance reports (produced by scripts/test-dotnet-server.sh)
+/dotnet-conformance-report*
+
+# OS / editor cruft
+.DS_Store
