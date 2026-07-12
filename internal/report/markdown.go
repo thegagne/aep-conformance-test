@@ -81,13 +81,12 @@ func (r *Report) markdownCapabilities(w io.Writer, rc CollectionCapabilities) {
 	fmt.Fprintln(w)
 }
 
-// markdownChecks renders check results grouped by outcome: failures and warnings
-// first (actionable), then passes, skips, and the not-applicable checks so it's
-// clear what wasn't tested and why.
+// markdownChecks renders check results in AEP order (spec order), with failures
+// surfacing first within each AEP so it's clear what wasn't tested and why.
 func (r *Report) markdownChecks(w io.Writer, results []checks.Result) {
 	sorted := make([]checks.Result, len(results))
 	copy(sorted, results)
-	r.sortByOutcome(sorted)
+	r.sortByAEP(sorted)
 
 	fmt.Fprintf(w, "**Checks**\n\n")
 	rows := make([][]string, 0, len(sorted))
@@ -107,26 +106,6 @@ func (r *Report) markdownChecks(w io.Writer, results []checks.Result) {
 	}
 	writeTable(w, []string{"status", "AEP", "level", "check", "detail"}, "llllll", rows)
 	fmt.Fprintln(w)
-}
-
-// sortByOutcome orders results fail → warn → pass → skip → n/a, then by AEP.
-func (r *Report) sortByOutcome(res []checks.Result) {
-	rank := func(x checks.Result) int { return sevRank(r.Severity(x)) }
-	// stable insertion by (severity rank, AEP, id)
-	less := func(a, b checks.Result) bool {
-		if ra, rb := rank(a), rank(b); ra != rb {
-			return ra < rb
-		}
-		if a.AEP != b.AEP {
-			return a.AEP < b.AEP
-		}
-		return a.CheckID < b.CheckID
-	}
-	for i := 1; i < len(res); i++ {
-		for j := i; j > 0 && less(res[j], res[j-1]); j-- {
-			res[j], res[j-1] = res[j-1], res[j]
-		}
-	}
 }
 
 // writeTable renders a GitHub-flavored markdown table with cells padded to each
