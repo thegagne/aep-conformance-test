@@ -63,7 +63,7 @@ Checks are grouped by AEP and gated on applicability — a check for an optional
 ## Architecture
 
 ```
-cmd/                 cobra CLI (test, discover)
+cmd/                 cobra CLI (test, discover, version)
 internal/discovery/  OpenAPI 3.1 -> APIModel (resources, endpoints, feature flags)
 internal/client/     REST client that captures requests/responses as evidence
 internal/sampler/    builds valid request bodies from JSON Schema
@@ -73,6 +73,17 @@ internal/report/     stdout / json / markdown renderers
 ```
 
 Checks are small registered values (metadata + a closure). Static checks read the discovered model; dynamic checks read a *probe* of captured live interactions, so the network I/O happens once per resource and the assertions are pure.
+
+## Versioning & the check catalog
+
+A conformance verdict is only meaningful relative to two things: the tool version and the AEP spec revision its checks encode. Both are printed by `aep-conformance version` (or `--version`) and **stamped into every report** (`tool_version`, `aep_spec_revision`, `generated_at`, `target`), so a saved report is self-describing and reproducible.
+
+This project follows [SemVer](https://semver.org/) but is intentionally **pre-1.0 (`v0.x`)** while the catalog is still growing:
+
+- **The check catalog is part of the public contract.** Adding or tightening a check can turn a previously-CONFORMANT API into NON-CONFORMANT — a breaking change for anyone gating CI on the exit code, even though nothing on their side changed.
+- **New/stricter checks land as MINOR bumps.** Pin a version (`go install ...@v0.3.0`) to pin the catalog; verdicts may tighten between minor releases. Read the release notes before bumping.
+- **`AEPSpecRevision`** (in `internal/buildinfo`) tracks the spec snapshot the catalog targets; it moves with the catalog.
+- **`v1.0.0` is a deliberate promise** that the catalog and report schema are stable — not made yet.
 
 ## References
 

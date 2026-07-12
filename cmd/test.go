@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/thegagne/aep-conformance-test/internal/buildinfo"
 	"github.com/thegagne/aep-conformance-test/internal/client"
 	"github.com/thegagne/aep-conformance-test/internal/discovery"
 	"github.com/thegagne/aep-conformance-test/internal/report"
@@ -51,12 +52,25 @@ func newTestCmd() *cobra.Command {
 			rn := runner.New(model, cl)
 			results := rn.Run(selected)
 
+			// Target is the live URL when testing a server, else the spec source.
+			target := liveURL
+			if target == "" {
+				if opts.OpenAPI != "" {
+					target = opts.OpenAPI
+				} else {
+					target = base
+				}
+			}
+			ver, _, _ := buildinfo.Info()
 			rep := &report.Report{
 				Title:        model.Title,
-				BaseURL:      liveURL,
+				BaseURL:      target,
 				Strict:       opts.Strict,
 				Results:      results,
 				Capabilities: report.Capabilities(selected),
+				ToolVersion:  ver,
+				SpecRevision: buildinfo.AEPSpecRevision,
+				GeneratedAt:  time.Now().UTC().Format(time.RFC3339),
 			}
 			if err := render(cmd, rep, verbose); err != nil {
 				return err

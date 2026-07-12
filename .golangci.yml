@@ -1,0 +1,20 @@
+# golangci-lint configuration. Runs as an advisory CI job for now (see
+# .github/workflows/ci.yml). A conservative, low-false-positive set; promote the
+# lint job to blocking once the catalog stabilizes and any findings are cleared.
+version: "2"
+
+linters:
+  enable:
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - misspell
+    - unconvert
+  settings:
+    staticcheck:
+      # Style/quickfix nits that are noise for this codebase's idioms.
+      checks:
+        - all
+        - -QF1002 # "could use tagged switch"
+        - -ST1000 # package comment style

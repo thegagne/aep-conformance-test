@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/thegagne/aep-conformance-test/internal/buildinfo"
 	"github.com/thegagne/aep-conformance-test/internal/discovery"
 )
 
@@ -35,12 +36,15 @@ func NewRootCmd() *cobra.Command {
 			"and runs conformance tests against the live server, reporting where it\n" +
 			"conforms to the AEP.dev specifications.",
 		SilenceUsage: true,
+		Version:      buildinfo.String(),
 	}
+	root.SetVersionTemplate("{{.Version}}\n")
 	root.PersistentFlags().StringVar(&opts.OpenAPI, "openapi", "", "OpenAPI spec source: local file path or URL (default <base-url>/openapi.json)")
 	root.PersistentFlags().StringVar(&opts.Config, "config", "", "override config file (auth, sample values)")
 	root.PersistentFlags().StringArrayVarP(&opts.Headers, "header", "H", nil, "extra request header 'Key: Value' or 'Key=Value' (repeatable); applied to the spec fetch and every request")
 	root.AddCommand(newDiscoverCmd())
 	root.AddCommand(newTestCmd())
+	root.AddCommand(newVersionCmd())
 	return root
 }
 

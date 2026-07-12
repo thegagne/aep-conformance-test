@@ -43,6 +43,12 @@ func (r *Report) WriteStdout(w io.Writer, verbose bool) {
 	if r.BaseURL != "" {
 		fmt.Fprintf(w, "Target: %s\n", r.BaseURL)
 	}
+	if r.ToolVersion != "" {
+		fmt.Fprintf(w, "Tool: aep-conformance %s  |  spec: %s\n", r.ToolVersion, r.SpecRevision)
+	}
+	if r.GeneratedAt != "" {
+		fmt.Fprintf(w, "Generated: %s\n", r.GeneratedAt)
+	}
 	fmt.Fprintln(w)
 
 	api, groups := r.Grouped()

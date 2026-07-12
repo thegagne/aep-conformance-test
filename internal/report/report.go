@@ -44,6 +44,12 @@ type Report struct {
 	Strict       bool
 	Results      []checks.Result
 	Capabilities []CollectionCapabilities
+
+	// Provenance, stamped so a saved report is self-describing: which tool
+	// version and AEP spec revision produced this verdict, and when.
+	ToolVersion  string
+	SpecRevision string
+	GeneratedAt  string
 }
 
 // Severity classifies a single result given the report's strictness.

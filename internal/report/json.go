@@ -28,12 +28,15 @@ type jsonCollection struct {
 }
 
 type jsonReport struct {
-	API         string           `json:"api"`
-	Target      string           `json:"target,omitempty"`
-	Conformant  bool             `json:"conformant"`
-	Summary     Summary          `json:"summary"`
-	APIChecks   []jsonResult     `json:"api_checks,omitempty"`
-	Collections []jsonCollection `json:"collections"`
+	API             string           `json:"api"`
+	Target          string           `json:"target,omitempty"`
+	ToolVersion     string           `json:"tool_version,omitempty"`
+	AEPSpecRevision string           `json:"aep_spec_revision,omitempty"`
+	GeneratedAt     string           `json:"generated_at,omitempty"`
+	Conformant      bool             `json:"conformant"`
+	Summary         Summary          `json:"summary"`
+	APIChecks       []jsonResult     `json:"api_checks,omitempty"`
+	Collections     []jsonCollection `json:"collections"`
 }
 
 // WriteJSON renders the report as machine-readable JSON, with capabilities and
@@ -56,10 +59,13 @@ func (r *Report) WriteJSON(w io.Writer) error {
 	api, groups := r.Grouped()
 	r.sortByAEP(api)
 	out := jsonReport{
-		API:        r.Title,
-		Target:     r.BaseURL,
-		Conformant: r.Conformant(),
-		Summary:    r.Summary(),
+		API:             r.Title,
+		Target:          r.BaseURL,
+		ToolVersion:     r.ToolVersion,
+		AEPSpecRevision: r.SpecRevision,
+		GeneratedAt:     r.GeneratedAt,
+		Conformant:      r.Conformant(),
+		Summary:         r.Summary(),
 	}
 	for _, res := range api {
 		out.APIChecks = append(out.APIChecks, toJSON(res))

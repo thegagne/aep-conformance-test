@@ -22,6 +22,15 @@ func (r *Report) WriteMarkdown(w io.Writer) {
 	if r.BaseURL != "" {
 		fmt.Fprintf(w, "**Target:** %s  \n", r.BaseURL)
 	}
+	if r.ToolVersion != "" {
+		fmt.Fprintf(w, "**Tool:** aep-conformance %s  \n", r.ToolVersion)
+	}
+	if r.SpecRevision != "" {
+		fmt.Fprintf(w, "**Spec:** %s  \n", r.SpecRevision)
+	}
+	if r.GeneratedAt != "" {
+		fmt.Fprintf(w, "**Generated:** %s  \n", r.GeneratedAt)
+	}
 	verdict := "✅ **CONFORMANT**"
 	if !r.Conformant() {
 		verdict = fmt.Sprintf("❌ **NON-CONFORMANT** — %d required check(s) failed", sum.Fail)
