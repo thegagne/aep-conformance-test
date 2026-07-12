@@ -84,7 +84,9 @@ The full requirement-by-requirement coverage map — including what's deliberate
 
 ## Versioning
 
-Pre-1.0, on purpose. The check catalog is part of the public contract: adding or tightening a check can flip a previously-conformant API to non-conformant, so **new checks ship as minor bumps and verdicts can tighten between releases** — pin a version to pin the catalog. Every report and `aep-conformance version` record the tool version and the AEP spec revision the checks target, so results stay reproducible. `v1.0.0` will mark the catalog and report schema as stable; not there yet.
+It's `v0.x` and the set of checks changes regularly — new ones get added and existing ones get stricter. That means an API that passes on one version can fail on a later one without changing anything on its end, so pin a version if you're gating CI on the result.
+
+Reports and `aep-conformance version` both record the tool version and the AEP spec revision the checks were written against, so you can tell what produced a given result. No compatibility guarantees before `v1.0.0`, which isn't close.
 
 ## References
 
