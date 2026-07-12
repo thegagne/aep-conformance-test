@@ -84,9 +84,7 @@ The full requirement-by-requirement coverage map — including what's deliberate
 
 ## Versioning
 
-It's `v0.x` and the set of checks changes regularly — new ones get added and existing ones get stricter. That means an API that passes on one version can fail on a later one without changing anything on its end, so pin a version if you're gating CI on the result.
-
-Reports and `aep-conformance version` both record the tool version and the AEP spec revision the checks were written against, so you can tell what produced a given result. No compatibility guarantees before `v1.0.0`, which isn't close.
+This is still a work in progress, but once we hit 1.0 we may present stored conformance tests for server implementations in the repo. For now, see the [examples](examples/).
 
 ## References
 
